@@ -1,0 +1,34 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: poi
+  name: poi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poi
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: poi
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/poi:latest
+        name: poi
+        ports:
+          - containerPort: 80
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        envFrom:
+        - secretRef:
+            name: sql-credentials
+        resources: {}
+status: {}
+...

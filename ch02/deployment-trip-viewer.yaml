@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: trip-viewer
+  name: trip-viewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trip-viewer
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: trip-viewer
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/tripviewer:latest
+        name: poi
+        ports:
+        - containerPort: 80
+        env:
+        - name: TRIPS_API_ENDPOINT
+          value: http://trips
+        - name: USERPROFILE_API_ENDPOINT
+          value: http://user-profile
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+        resources: {}
+status: {}
+...
