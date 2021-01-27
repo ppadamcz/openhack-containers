@@ -1,0 +1,296 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripinsight-api
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tripinsight-web
+---
+#SECRETS
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sql-credentials
+  namespace: tripinsight-api
+data:
+  SQL_PASSWORD: dVg2eWw4QW03
+  SQL_SERVER: c3Fsc2VydmVyb3N1NzczMS5kYXRhYmFzZS53aW5kb3dzLm5ldA==
+  SQL_USER: c3FsYWRtaW5vU3U3NzMx
+---
+#POI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: poi
+  name: poi
+  namespace: tripinsight-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poi
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: poi
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/poi:latest
+        name: poi
+        ports:
+          - containerPort: 80
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        envFrom:
+        - secretRef:
+            name: sql-credentials
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: poi
+  namespace: tripinsight-api
+spec:
+  selector:
+    app: poi
+  ports:
+    - protocol: TCP
+      port: 80
+
+---
+#TRIPS
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: trips
+  name: trips
+  namespace: tripinsight-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trips
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: trips
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/trips:latest
+        name: trips
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trips
+  namespace: tripinsight-api
+spec:
+  selector:
+    app: trips
+  ports:
+    - protocol: TCP
+      port: 80
+---
+#USER-PROFILE
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: user-profile
+  name: user-profile
+  namespace: tripinsight-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-profile
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: user-profile
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/user-profile:latest
+        name: user-profile
+        ports:
+          - containerPort: 80
+        envFrom:
+        - secretRef:
+            name: sql-credentials
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-profile
+  namespace: tripinsight-api
+spec:
+  selector:
+    app: user-profile
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+#USER-JAVA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: user-java
+  name: user-java
+  namespace: tripinsight-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-java
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: user-java
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/user-java:latest
+        name: user-java
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-java
+  namespace: tripinsight-api
+spec:
+  selector:
+    app: user-java
+  ports:
+    - protocol: TCP
+      port: 80
+---
+#TRIP-VIEWER
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: trip-viewer
+  name: trip-viewer
+  namespace: tripinsight-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trip-viewer
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: trip-viewer
+    spec:
+      containers:
+      - image: registryosu7731.azurecr.io/tripviewer:latest
+        name: poi
+        ports:
+        - containerPort: 80
+        env:
+        - name: TRIPS_API_ENDPOINT
+          value: http://trips.tripinsight-api
+        - name: USERPROFILE_API_ENDPOINT
+          value: http://user-profile.tripinsight-api
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-viewer
+  namespace: tripinsight-web
+spec:
+  selector:
+    app: trip-viewer
+  ports:
+    - protocol: TCP
+      port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-viewer
+  namespace: tripinsight-web
+spec:
+  selector:
+    app: trip-viewer
+  ports:
+    - protocol: TCP
+      port: 80
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  name: api-ingress
+  namespace: tripinsight-api
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /api/poi
+        pathType: Prefix
+        backend:
+          serviceName: poi
+          servicePort: 80
+      - path: /api/trips
+        pathType: Prefix
+        backend:
+          serviceName: trips
+          servicePort: 80
+      - path: /api/user
+        pathType: Prefix
+        backend:
+          serviceName: user-profile
+          servicePort: 80
+      - path: /api/user-java
+        pathType: Prefix
+        backend:
+          serviceName: user-java
+          servicePort: 80
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  name: web-ingress
+  namespace: tripinsight-web
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          serviceName: trip-viewer
+          servicePort: 80
+
+# NGINX INGRESS INSTALL
+# kubectl create namespace ingress-basic
+# helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-basic --set controller.replicaCount=1
+
+# helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-basic --set controller.replicaCount=1 -f internal-ingress.yaml
